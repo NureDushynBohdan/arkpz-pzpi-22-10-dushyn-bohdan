@@ -34,10 +34,7 @@
 4. Адміністрування
 •	DELETE /admin/users/{user_id}/: видалення користувача.
 •	PUT /admin/users/{user_id}/role/: оновлення ролі користувача.
-•	GET /admin/logs/: отримання логів.
-•	GET /admin/reports/: генерація звітів.
 5. Дані сенсорів
 •	POST /api/data: отримання даних від сенсора.
 •	GET /api/sensor-data: отримання всіх записів даних сенсорів.
-•	GET /api/sensor-data/{sensor_id}: отримання даних по сенсору за його ID.
-•	GET /api/sensor-data/filter: фільтрація даних сенсорів за часовим проміжком.
+
