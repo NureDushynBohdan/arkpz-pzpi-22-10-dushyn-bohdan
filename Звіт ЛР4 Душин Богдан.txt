@@ -1,0 +1,95 @@
+Розроблена програма є вдосконаленим IoT-клієнтом для збирання, обробки та 
+передачі даних сенсора на сервер. Основні рішення включають: 
+Динамічне налаштування порогу температури: 
+• Значення порогу температури отримується через API (fetch_sensor_value) 
+від серверної частини. 
+• Це дозволяє змінювати налаштування без модифікації коду клієнта. 
+Локальне збереження налаштувань: 
+• Значення порогу зберігається у файлі settings.json для використання у разі 
+помилок з мережею або сервером. 
+• Функції update_settings_file та read_temperature_threshold дозволяють 
+керувати локальним файлом налаштувань. 
+Обробка помилок: 
+• Усі основні операції (виклик API, робота з файлами, відправка даних) 
+обгорнуті у блоки try-except, що підвищує стійкість клієнта до помилок. 
+Гнучка перевірка температури: 
+• Функція check_temperature перевіряє значення температури на основі 
+порогу, який може бути динамічно завантажений або взятий із файлу. 
+Модульність: 
+• Код розділений на незалежні функції для підвищення читабельності, 
+повторного використання та тестованості. 
+Тестові дані: 
+• Дані температури та вологості симулюються за допомогою генератора 
+випадкових чисел (random.uniform), що дозволяє перевірити роботу 
+клієнта без реального сенсора. 
+Фрагменти створеного програмного коду 
+Виклик API для отримання порогу температури: 
+def fetch_sensor_value(sensor_id, server_url): 
+try: 
+response = requests.get(f"{server_url}/sensors/{sensor_id}/value/") 
+response.raise_for_status()  
+data = response.json() 
+value = data.get("value", "25").replace("°C", "").strip()  
+        return float(value)  
+    except requests.exceptions.RequestException as e: 
+        print(f"Помилка отримання значення датчика: {e}") 
+        return 25  
+ 
+Функція отримує значення порогу температури через API. У разі помилки 
+повертається значення за замовчуванням. 
+Робота з локальним файлом налаштувань: 
+def update_settings_file(threshold): 
+    settings = {"temperature_threshold": threshold} 
+    with open(SETTINGS_FILE, "w") as file: 
+        json.dump(settings, file) 
+ 
+def read_temperature_threshold(): 
+    with open(SETTINGS_FILE, "r") as file: 
+        settings = json.load(file) 
+        return settings["temperature_threshold"] 
+Ці функції відповідають за зберігання та зчитування значення порогу 
+температури з файлу settings.json. 
+Перевірка температури: 
+def check_temperature(temperature, threshold=None): 
+    if threshold is None: 
+        settings = load_settings() 
+        threshold = settings.get("temperature_threshold", 25) 
+     
+    if temperature < threshold - 5: 
+        return "Попередження: температура занадто низька" 
+    elif temperature > threshold + 5: 
+        return "Попередження: температура занадто висока" 
+    else: 
+        return "Температура в безпечному діапазоні" 
+ 
+Функція визначає статус температури відносно порогу, враховуючи 
+відхилення ±5°C. 
+Основна логіка програми: 
+def main(): 
+    temperature_threshold = fetch_sensor_value(SENSOR_ID, SERVER_URL) 
+    print(f"Температурний поріг, отриманий від датчика: {temperature_threshold}°C") 
+ 
+    update_settings_file(temperature_threshold) 
+ 
+    iterations = 0 
+    while iterations < 5: 
+        try: 
+            temperature = random.uniform(18, 30) 
+            humidity = random.uniform(40, 70) 
+print(check_temperature(temperature, temperature_threshold)) 
+response_code = send_data_to_server(temperature, humidity, SERVER_URL, 
+SENSOR_ID) 
+if response_code == 200: 
+print("Дані успішно надіслано.") 
+break 
+else: 
+print("Не вдалося надіслати дані.") 
+iterations += 1 
+time.sleep(2) 
+except Exception as e: 
+print(f"Error: {e}") 
+break 
+if __name__ == "__main__": 
+main() 
+Головна функція виконує динамічне налаштування порогу, збір даних та 
+передачу їх на сервер з повторенням у разі невдачі.
