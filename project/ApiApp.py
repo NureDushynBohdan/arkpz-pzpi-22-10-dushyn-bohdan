@@ -234,3 +234,14 @@ def get_sensor_value(sensor_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail=f"Sensor with ID {sensor_id} not found")
     
     return {"value": sensor.Value}
+
+@app.put("/sensors/{sensor_id}/value/")
+def update_sensor_value(sensor_id: int, new_value: str, db: Session = Depends(get_db)):
+    sensor = db.query(IoTSensor).filter(IoTSensor.SensorID == sensor_id).first()
+    if not sensor:
+        raise HTTPException(status_code=404, detail=f"Sensor with ID {sensor_id} not found")
+
+    sensor.Value = new_value
+    db.commit()
+    db.refresh(sensor)
+    return {"message": "Sensor value updated successfully", "sensor_id": sensor_id, "new_value": new_value}
