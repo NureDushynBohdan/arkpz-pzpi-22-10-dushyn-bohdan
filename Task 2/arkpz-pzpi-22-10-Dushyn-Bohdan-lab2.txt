@@ -1,0 +1,204 @@
+Загальний опис системи 
+Система призначена для управління акваріумами та взаємодії з IoT-сенсорами 
+для моніторингу параметрів води. Основними учасниками системи є: 
+• Техніки: відповідальні за обслуговування акваріумів. 
+• Клієнти: власники акваріумів. 
+• Адміністратори: керують системою та мають доступ до логів. 
+Система реалізована на основі фреймворку FastAPI для створення RESTful API. 
+Взаємодія з базою даних здійснюється через SQLAlchemy ORM. 
+Архітектурні рішення 
+Серверна частина: 
+• Створено REST API для взаємодії з клієнтами. 
+• Реалізовано CRUD-операції для основних сутностей: техніків, клієнтів, 
+акваріумів та сенсорів. 
+База даних: 
+• Використано MySQL для зберігання даних. 
+• Створено таблиці з відношеннями для забезпечення цілісності даних. 
+Бізнес-логіка: 
+• Перевірка доступності техніка для призначення до акваріума. 
+• Обробка даних із сенсорів для моніторингу параметрів води. 
+Адміністрування: 
+• Реалізовано функції видалення користувачів та оновлення їх ролей. 
+• Логування дій у системі. 
+Специфікація API для взаємодії серверної частини з клієнтами 
+Техніки 
+• POST /technicians/: створення техніка. 
+• GET /technicians/: отримання списку всіх техніків. 
+• DELETE /technicians/{technician_id}/: видалення техніка за ID. 
+Акваріуми 
+• POST /aquariums/: створення акваріума. 
+• GET /aquariums/: отримання списку всіх акваріумів. 
+• DELETE /aquariums/{aquarium_id}/: видалення акваріума за ID. 
+Сенсори IoT 
+• POST /sensors/: створення сенсора. 
+• GET /sensors/: отримання списку всіх сенсорів. 
+• DELETE /sensors/{sensor_id}/: видалення сенсора за ID. 
+Адміністрування 
+• DELETE /admin/users/{user_id}/: видалення користувача. 
+• PUT /admin/users/{user_id}/role/: оновлення ролі користувача. 
+Дані сенсорів 
+• POST /api/data: отримання даних від сенсора. 
+• GET /api/sensor-data: отримання всіх записів даних сенсорів. 
+UML діаграму прецедентів для серверної частини системи: 
+ER діаграма: 
+Діаграма структури БД: 
+Код для створення бази даних наведено в додатку Б 
+Додаток А 
+Код основної програми 
+from typing import List 
+from fastapi import FastAPI, Depends, HTTPException 
+from sqlalchemy.orm import Session 
+from sqlalchemy import create_engine 
+from sqlalchemy.orm import sessionmaker 
+from models import Technician, Aquarium, IoTSensor, Administrator, SensorDataInDB, SensorDataResponse, 
+SensorData 
+from sqlalchemy.sql import func 
+from datetime import datetime 
+from pydantic import BaseModel 
+DATABASE_URL = "mysql+pymysql://root:@localhost/AquariumSystem" 
+engine = create_engine(DATABASE_URL, echo=True) 
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine) 
+app = FastAPI() 
+def get_db(): 
+db = SessionLocal() 
+try: 
+yield db 
+f
+ inally: 
+db.close() 
+@app.post("/technicians/") 
+def create_technician(name: str, specialization: str, availability: str, db: Session = Depends(get_db)): 
+db_technician = Technician(Name=name, Specialization=specialization, Availability=availability) 
+db.add(db_technician) 
+db.commit() 
+db.refresh(db_technician) 
+return db_technician 
+@app.get("/technicians/") 
+def get_technicians(db: Session = Depends(get_db)): 
+return db.query(Technician).all() 
+@app.delete("/technicians/{technician_id}/") 
+def delete_technician(technician_id: int, db: Session = Depends(get_db)): 
+technician = db.query(Technician).filter(Technician.TechnicianID == technician_id).first() 
+if not technician: 
+raise HTTPException(status_code=404, detail="Technician not found") 
+db.delete(technician) 
+db.commit() 
+return {"message": "Technician deleted successfully"} 
+@app.post("/aquariums/") 
+def create_aquarium(location: str, fish_types: str, water_parameters: str, technician_id: int, client_id: int, db: 
+Session = Depends(get_db)): 
+db_aquarium = Aquarium(Location=location, FishTypes=fish_types, WaterParameters=water_parameters, 
+TechnicianID=technician_id, ClientID=client_id) 
+db.add(db_aquarium) 
+db.commit() 
+db.refresh(db_aquarium) 
+return db_aquarium 
+@app.get("/aquariums/") 
+def get_aquariums(db: Session = Depends(get_db)): 
+return db.query(Aquarium).all() 
+@app.delete("/aquariums/{aquarium_id}/") 
+def delete_aquarium(aquarium_id: int, db: Session = Depends(get_db)): 
+aquarium = db.query(Aquarium).filter(Aquarium.AquariumID == aquarium_id).first() 
+if not aquarium: 
+raise HTTPException(status_code=404, detail="Aquarium not found") 
+db.delete(aquarium) 
+db.commit() 
+return {"message": "Aquarium deleted successfully"} 
+@app.post("/sensors/") 
+def create_sensor(sensor_type: str, value: str, aquarium_id: int, db: Session = Depends(get_db)): 
+db_sensor = IoTSensor(Type=sensor_type, Value=value, AquariumID=aquarium_id) 
+db.add(db_sensor) 
+db.commit() 
+db.refresh(db_sensor) 
+return db_sensor 
+@app.get("/sensors/") 
+def get_sensors(db: Session = Depends(get_db)): 
+return db.query(IoTSensor).all() 
+@app.delete("/sensors/{sensor_id}/") 
+def delete_sensor(sensor_id: int, db: Session = Depends(get_db)): 
+sensor = db.query(IoTSensor).filter(IoTSensor.SensorID == sensor_id).first() 
+if not sensor: 
+raise HTTPException(status_code=404, detail="Sensor not found") 
+db.delete(sensor) 
+db.commit() 
+return {"message": "Sensor deleted successfully"} 
+# Адміністрування 
+@app.delete("/admin/users/{user_id}/") 
+def delete_user(user_id: int, db: Session = Depends(get_db)): 
+user = db.query(Administrator).filter(Administrator.AdminID == user_id).first() 
+if not user: 
+raise HTTPException(status_code=404, detail="User not found") 
+db.delete(user) 
+db.commit() 
+return {"message": "User deleted successfully"} 
+@app.put("/admin/users/{user_id}/role/") 
+def update_user_role(user_id: int, new_role: str, db: Session = Depends(get_db)): 
+user = db.query(Administrator).filter(Administrator.AdminID == user_id).first() 
+if not user: 
+raise HTTPException(status_code=404, detail="User not found") 
+if new_role not in ["Administrator", "Technician", "Client"]: 
+raise HTTPException(status_code=400, detail="Invalid role specified") 
+user.Role = new_role 
+db.commit() 
+db.refresh(user) 
+return {"message": f"User role updated to {new_role}"} 
+@app.post("/api/data") 
+def receive_data(sensor_data: SensorData, db: Session = Depends(get_db)): 
+new_sensor_data = SensorDataInDB( 
+temperature=sensor_data.temperature, 
+humidity=sensor_data.humidity, 
+sensor_id=sensor_data.sensor_id 
+) 
+db.add(new_sensor_data) 
+db.commit() 
+db.refresh(new_sensor_data) 
+return new_sensor_data 
+@app.get("/api/sensor-data") 
+def get_all_sensor_data(db: Session = Depends(get_db)): 
+data = db.query(SensorDataInDB).all() 
+if not data: 
+raise HTTPException(status_code=404, detail="No sensor data found") 
+return data 
+Додаток Б 
+Код створення бази данних 
+CREATE DATABASE AquariumSystem; 
+USE AquariumSystem; -- Table: Technician 
+CREATE TABLE Technician ( 
+TechnicianID INT AUTO_INCREMENT PRIMARY KEY, 
+Name VARCHAR(100) NOT NULL, 
+Specialization VARCHAR(100) NOT NULL, 
+Availability VARCHAR(50) 
+); -- Table: Client 
+CREATE TABLE Client ( 
+ClientID INT AUTO_INCREMENT PRIMARY KEY, 
+Name VARCHAR(100) NOT NULL, 
+Email VARCHAR(100) NOT NULL UNIQUE 
+); -- Table: Aquarium 
+CREATE TABLE Aquarium ( 
+AquariumID INT AUTO_INCREMENT PRIMARY KEY, 
+Location VARCHAR(255) NOT NULL, 
+FishTypes TEXT NOT NULL, 
+WaterParameters TEXT NOT NULL, 
+TechnicianID INT, 
+ClientID INT, 
+FOREIGN KEY (TechnicianID) REFERENCES Technician(TechnicianID), 
+FOREIGN KEY (ClientID) REFERENCES Client(ClientID) 
+); -- Table: IoT Sensor 
+CREATE TABLE IoT_Sensor ( 
+SensorID INT AUTO_INCREMENT PRIMARY KEY, 
+Type ENUM('Temperature', 'pH', 'Other') NOT NULL, 
+Value VARCHAR(50) NOT NULL, 
+AquariumID INT NOT NULL, 
+FOREIGN KEY (AquariumID) REFERENCES Aquarium(AquariumID) 
+); -- Table: Administrator 
+CREATE TABLE Administrator ( 
+AdminID INT AUTO_INCREMENT PRIMARY KEY, 
+Name VARCHAR(100) NOT NULL, 
+Role VARCHAR(50) NOT NULL 
+); 
+CREATE TABLE fk_sensor ( 
+id INT AUTO_INCREMENT PRIMARY KEY,   
+aquarium_id INT NOT NULL,              
+type VARCHAR(50) NOT NULL,              
+FOREIGN KEY (aquarium_id) REFERENCES aquarium(AquariumId)   
+);
